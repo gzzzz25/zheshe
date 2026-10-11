@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>光的折射交互演示</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #eef1f6;
+    color: #333;
+    min-height: 100vh;
+    padding: 24px;
+  }
+  .container { max-width: 1080px; margin: 0 auto; }
+
+  header { text-align: center; margin-bottom: 18px; }
+  h1 {
+    font-size: 28px; font-weight: 700; color: #222;
+    display: inline-block;
+    border-bottom: 4px solid #e67e22;
+    padding-bottom: 6px;
+    letter-spacing: 2px;
+  }
+  .subtitle { margin-top: 8px; font-size: 14px; color: #666; }
+
+  .main-panel {
+    display: grid;
+    grid-template-columns: 1fr 290px;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  @media (max-width: 860px) { .main-panel { grid-template-columns: 1fr; } }
+
+  .canvas-wrap {
+    background: #fff;
+    border-radius: 12px;
+    padding: 12px;
+    border: 1px solid #d8dee9;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+  }
+  canvas { width: 100%; display: block; border-radius: 8px; cursor: crosshair; }
+
+  .legend {
+    display: flex; gap: 20px; justify-content: center; margin-top: 10px;
+    font-size: 14px; color: #555; font-weight: 600; flex-wrap: wrap;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-line { width: 28px; height: 4px; border-radius: 2px; }
+
+  .control-panel {
+    background: #fff; border-radius: 12px; padding: 18px;
+    border: 1px solid #d8dee9; box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    display: flex; flex-direction: column; gap: 16px;
+  }
+  .group label { font-size: 14px; color: #444; font-weight: 700; display: block; margin-bottom: 8px; }
+  .group label::before { content: ""; display: inline-block; width: 4px; height: 14px; background: #e67e22; border-radius: 2px; margin-right: 8px; vertical-align: -2px; }
+
+  input[type=range] {
+    width: 100%; -webkit-appearance: none; height: 8px; background: #e0e0e0;
+    border-radius: 4px; outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 24px; height: 24px; background: #e67e22;
+    border-radius: 50%; cursor: pointer; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  }
+
+  .media-row { display: flex; gap: 8px; align-items: center; }
+  .media-row select {
+    flex: 1; padding: 9px 8px; background: #f6f8fb; color: #333;
+    border: 1px solid #ccd4e0; border-radius: 8px; font-size: 14px; font-weight: 600; outline: none;
+    cursor: pointer;
+  }
+  .media-row select:focus { border-color: #e67e22; }
+  .arrow { color: #999; font-size: 16px; font-weight: 700; }
+
+  .toggles { display: flex; flex-direction: column; gap: 10px; }
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; font-size: 14px; color: #444; font-weight: 600; }
+  .toggle-row .tname { display: flex; align-items: center; gap: 7px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  .switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider-sw {
+    position: absolute; cursor: pointer; inset: 0; background: #c5ccd8;
+    border-radius: 24px; transition: 0.2s;
+  }
+  .slider-sw::before {
+    content: ""; position: absolute; width: 20px; height: 20px; left: 2px; top: 2px;
+    background: #fff; border-radius: 50%; transition: 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+  }
+  .switch input:checked + .slider-sw { background: #e67e22; }
+  .switch input:checked + .slider-sw::before { transform: translateX(20px); }
+
+  .btns { display: flex; flex-direction: column; gap: 10px; }
+  .btn {
+    padding: 12px 10px; border: none; border-radius: 10px; background: #f0f3f8;
+    font-size: 15px; font-weight: 700; color: #444; cursor: pointer; transition: 0.15s; text-align: center;
+    border: 2px solid #d8dee9;
+  }
+  .btn:hover { background: #e6ebf2; border-color: #b8c2d4; }
+  .btn.active { background: #e67e22; border-color: #e67e22; color: #fff; }
+  .btn.active:hover { background: #d8741d; }
+
+  .angle-display {
+    display: flex; justify-content: space-around; padding: 12px 0;
+    border-top: 2px solid #eef1f6; border-bottom: 2px solid #eef1f6;
+    background: #fafbfd; border-radius: 8px;
+  }
+  .angle-item { text-align: center; }
+  .angle-item .lbl { font-size: 13px; color: #888; margin-bottom: 3px; font-weight: 600; }
+  .angle-item .num { font-size: 22px; font-weight: 800; font-family: "Courier New", monospace; }
+
+  .status-banner { padding: 10px 12px; border-radius: 8px; font-size: 14px; text-align: center; font-weight: 700; }
+  .status-normal { background: #e8f5e9; color: #2e7d32; border: 2px solid #a5d6a7; }
+  .status-tir { background: #ffebee; color: #c62828; border: 2px solid #ef9a9a; }
+  .status-rev { background: #e3f2fd; color: #1565c0; border: 2px solid #90caf9; }
+
+  .info-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  @media (max-width: 860px) { .info-cards { grid-template-columns: 1fr; } }
+  .info-card {
+    background: #fff; border-radius: 10px; padding: 16px;
+    border: 1px solid #d8dee9; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .info-card h3 { font-size: 15px; color: #e67e22; margin-bottom: 8px; }
+  .info-card p { font-size: 13px; color: #666; line-height: 1.7; }
+
+  .footer { text-align: center; margin-top: 20px; font-size: 14px; color: #888; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>光的折射</h1>
+    <p class="subtitle">拖动滑块、点击画布或开启自动演示，观察折射规律</p>
+  </header>
+
+  <div class="main-panel">
+    <div class="canvas-wrap">
+      <canvas id="canvas" width="800" height="480"></canvas>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-line" style="background:#e74c3c"></div>入射光线</div>
+        <div class="legend-item"><div class="legend-line" style="background:#3498db"></div>折射光线</div>
+        <div class="legend-item"><div class="legend-line" style="background:#2ecc71"></div>反射光线</div>
+        <div class="legend-item"><div class="legend-line" style="background:transparent;border-top:3px dashed #9aa5b5;height:0"></div>法线</div>
+      </div>
+    </div>
+
+    <div class="control-panel">
+      <div class="group">
+        <label>入射角</label>
+        <input type="range" id="angleSlider" min="0" max="89" step="0.5" value="30">
+      </div>
+
+      <div class="group">
+        <label>介质</label>
+        <div class="media-row">
+          <select id="medium1">
+            <option value="1.00" selected>空气</option>
+            <option value="1.33">水</option>
+            <option value="1.50">玻璃</option>
+          </select>
+          <span class="arrow">→</span>
+          <select id="medium2">
+            <option value="1.00">空气</option>
+            <option value="1.33" selected>水</option>
+            <option value="1.50">玻璃</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="group">
+        <label>图上元素</label>
+        <div class="toggles">
+          <div class="toggle-row">
+            <span class="tname"><span class="dot" style="background:#e74c3c"></span>入射光线</span>
+            <label class="switch"><input type="checkbox" id="showIncident" checked><span class="slider-sw"></span></label>
+          </div>
+          <div class="toggle-row">
+            <span class="tname"><span class="dot" style="background:#3498db"></span>折射光线</span>
+            <label class="switch"><input type="checkbox" id="showRefract" checked><span class="slider-sw"></span></label>
+          </div>
+          <div class="toggle-row">
+            <span class="tname"><span class="dot" style="background:#2ecc71"></span>反射光线</span>
+            <label class="switch"><input type="checkbox" id="showReflect" checked><span class="slider-sw"></span></label>
+          </div>
+          <div class="toggle-row">
+            <span class="tname"><span class="dot" style="background:#9aa5b5"></span>法线</span>
+            <label class="switch"><input type="checkbox" id="showNormal" checked><span class="slider-sw"></span></label>
+          </div>
+          <div class="toggle-row">
+            <span class="tname"><span class="dot" style="background:#999"></span>角度标注</span>
+            <label class="switch"><input type="checkbox" id="showAngles" checked><span class="slider-sw"></span></label>
+          </div>
+        </div>
+      </div>
+
+      <div class="btns">
+        <button class="btn" id="btnReverse">光路可逆演示</button>
+        <button class="btn" id="btnAuto">自动演示</button>
+      </div>
+
+      <div class="angle-display">
+        <div class="angle-item">
+          <div class="lbl">入射角</div>
+          <div class="num" style="color:#e74c3c" id="angleDisplay">30.0°</div>
+        </div>
+        <div class="angle-item">
+          <div class="lbl">折射角</div>
+          <div class="num" style="color:#3498db" id="refractDisplay">22.1°</div>
+        </div>
+        <div class="angle-item">
+          <div class="lbl">反射角</div>
+          <div class="num" style="color:#2ecc71" id="reflectDisplay">30.0°</div>
+        </div>
+      </div>
+
+      <div class="status-banner status-normal" id="statusBanner">光从空气射入水中，折射角小于入射角</div>
+    </div>
+  </div>
+
+  <div class="info-cards">
+    <div class="info-card">
+      <h3>折射规律</h3>
+      <p>光从空气斜射入水或玻璃时，折射光线向法线偏折，折射角小于入射角。入射角增大，折射角也增大。</p>
+    </div>
+    <div class="info-card">
+      <h3>垂直入射</h3>
+      <p>当光垂直射入水面时，传播方向不变，折射角为 0°。</p>
+    </div>
+    <div class="info-card">
+      <h3>光路可逆</h3>
+      <p>点击"光路可逆演示"：让光逆着折射光线射入，它会沿原入射光线的方向射出。</p>
+    </div>
+  </div>
+
+  <p class="footer">朱高俊</p>
+</div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const slider = document.getElementById('angleSlider');
+const angleDisplay = document.getElementById('angleDisplay');
+const refractDisplay = document.getElementById('refractDisplay');
+const reflectDisplay = document.getElementById('reflectDisplay');
+const statusBanner = document.getElementById('statusBanner');
+const medium1Sel = document.getElementById('medium1');
+const medium2Sel = document.getElementById('medium2');
+const btnReverse = document.getElementById('btnReverse');
+const btnAuto = document.getElementById('btnAuto');
+const showIncident = document.getElementById('showIncident');
+const showRefract = document.getElementById('showRefract');
+const showReflect = document.getElementById('showReflect');
+const showNormal = document.getElementById('showNormal');
+const showAngles = document.getElementById('showAngles');
+
+let angleDeg = 30;       // 原模式下的入射角
+let reverseMode = false; // 光路可逆模式
+let autoMode = false;    // 自动演示
+let autoDir = 1;
+let animId = null;
+
+function getMediumName(sel) { return sel.options[sel.selectedIndex].text; }
+
+// 计算实际角度：返回 {theta1(入射角), theta2(折射角), tir, n1, n2}
+function calc() {
+  const n1 = parseFloat(medium1Sel.value);
+  const n2 = parseFloat(medium2Sel.value);
+  let theta1, theta2, tir = false;
+
+  if (reverseMode) {
+    // 可逆模式：光从介质2射向介质1，入射角 = 原折射角
+    const sinOrigR = n1 * Math.sin(angleDeg * Math.PI / 180) / n2;
+    if (sinOrigR > 1) {
+      tir = true; theta1 = Math.PI / 2; theta2 = 0;
+    } else {
+      theta1 = Math.asin(sinOrigR);            // 新入射角 = 原折射角
+      const sinNewR = n2 * Math.sin(theta1) / n1;
+      if (sinNewR > 1) { tir = true; theta2 = Math.PI / 2; }
+      else theta2 = Math.asin(sinNewR);        // 新折射角 = 原入射角
+    }
+  } else {
+    theta1 = angleDeg * Math.PI / 180;
+    const sinT2 = n1 * Math.sin(theta1) / n2;
+    if (sinT2 > 1) { tir = true; theta2 = 0; }
+    else theta2 = Math.asin(sinT2);
+  }
+  return { theta1, theta2, tir, n1, n2 };
+}
+
+// 在两点连线中点画箭头，指向传播方向 (x1,y1)->(x2,y2)
+function drawArrowMid(x1, y1, x2, y2, color, size) {
+  const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(mx, my);
+  ctx.lineTo(mx - size * Math.cos(angle - 0.38), my - size * Math.sin(angle - 0.38));
+  ctx.lineTo(mx - size * Math.cos(angle + 0.38), my - size * Math.sin(angle + 0.38));
+  ctx.closePath();
+  ctx.fill();
+}
+
+function draw() {
+  const W = canvas.width, H = canvas.height;
+  const cx = W / 2, cy = H / 2;
+  const { theta1, theta2, tir, n1, n2 } = calc();
+
+  ctx.clearRect(0, 0, W, H);
+
+  // 上下两区域（介质2区域更明显的浅色）
+  const upColor = n1 > 1 ? (n1 > 1.4 ? '#f3ead9' : '#dceff8') : '#f7f9fc';
+  const downColor = n2 > 1 ? (n2 > 1.4 ? '#f3ead9' : '#dceff8') : '#f7f9fc';
+  ctx.fillStyle = upColor;
+  ctx.fillRect(0, 0, W, cy);
+  ctx.fillStyle = downColor;
+  ctx.fillRect(0, cy, W, H - cy);
+
+  // 介质名（大字）
+  ctx.fillStyle = '#5a6b7d';
+  ctx.font = 'bold 16px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(getMediumName(medium1Sel), 18, 34);
+  ctx.fillText(getMediumName(medium2Sel), 18, H - 16);
+
+  // 分界面（加粗）
+  ctx.strokeStyle = '#7a8798';
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(W, cy); ctx.stroke();
+
+  // 法线
+  if (showNormal.checked) {
+    ctx.strokeStyle = '#9aa5b5';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([8, 6]);
+    ctx.beginPath(); ctx.moveTo(cx, 16); ctx.lineTo(cx, H - 16); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#7a8798';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('法线', cx, H - 20);
+  }
+
+  const ox = cx, oy = cy;
+  const rayLen = 165;
+  const sign = reverseMode ? -1 : 1;
+
+  // —— 光线端点计算 ——
+  // 入射光线端点（入射角一侧，远离界面）
+  const ix = ox - rayLen * Math.sin(theta1);
+  const iy = oy - sign * rayLen * Math.cos(theta1);
+  // 反射光线端点（同侧介质，法线另一侧）
+  const rx = ox + rayLen * Math.sin(theta1);
+  const ry = oy - sign * rayLen * Math.cos(theta1);
+  // 折射光线端点（另一侧介质）
+  const tx = ox + (reverseMode ? -1 : 1) * rayLen * Math.sin(theta2);
+  const ty = oy + sign * rayLen * Math.cos(theta2);
+
+  // 入射光线
+  if (showIncident.checked) {
+    ctx.strokeStyle = '#e74c3c';
+    ctx.lineWidth = 4.5;
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(ix, iy); ctx.lineTo(ox, oy); ctx.stroke();
+    drawArrowMid(ix, iy, ox, oy, '#e74c3c', 15);
+  }
+
+  // 反射光线
+  if (showReflect.checked) {
+    ctx.strokeStyle = '#2ecc71';
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(rx, ry); ctx.stroke();
+    drawArrowMid(ox, oy, rx, ry, '#2ecc71', 14);
+  }
+
+  // 折射光线
+  if (showRefract.checked && !tir) {
+    ctx.strokeStyle = '#3498db';
+    ctx.lineWidth = 4.5;
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(tx, ty); ctx.stroke();
+    drawArrowMid(ox, oy, tx, ty, '#3498db', 15);
+  }
+
+  // 全反射提示
+  if (tir) {
+    ctx.fillStyle = '#e74c3c';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('全反射（无折射光线）', ox, oy + 60);
+  }
+
+  // 入射点
+  ctx.fillStyle = '#222';
+  ctx.beginPath(); ctx.arc(ox, oy, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // —— 角度标注 ——
+  if (showAngles.checked) {
+    const rArc = 52;
+    const aDeg = (theta1 * 180 / Math.PI).toFixed(1);   // 入射角
+    const rDeg = tir ? null : (theta2 * 180 / Math.PI).toFixed(1); // 折射角
+    ctx.font = 'bold 15px sans-serif';
+
+    if (!reverseMode) {
+      // 入射角弧线：法线(-90°) → 入射方向(-90°-θ1)，逆时针
+      ctx.strokeStyle = 'rgba(231,76,60,0.75)';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(ox, oy, rArc, -Math.PI / 2, -Math.PI / 2 - theta1, true); ctx.stroke();
+      ctx.fillStyle = '#e74c3c';
+      ctx.textAlign = 'right';
+      ctx.fillText('i=' + aDeg + '°', ox - rArc * Math.sin(theta1 / 2) - 14, oy - rArc * Math.cos(theta1 / 2) + 4);
+
+      // 反射角弧线：法线(-90°) → 反射方向(-90°+θ1)，顺时针
+      ctx.strokeStyle = 'rgba(46,204,113,0.75)';
+      ctx.beginPath(); ctx.arc(ox, oy, rArc, -Math.PI / 2, -Math.PI / 2 + theta1, false); ctx.stroke();
+      ctx.fillStyle = '#2ecc71';
+      ctx.textAlign = 'left';
+      ctx.fillText("i'=" + aDeg + '°', ox + rArc * Math.sin(theta1 / 2) + 14, oy - rArc * Math.cos(theta1 / 2) + 4);
+
+      // 折射角弧线：法线(90°) → 折射方向(90°-θ2)，逆时针
+      if (!tir) {
+        ctx.strokeStyle = 'rgba(52,152,219,0.75)';
+        ctx.beginPath(); ctx.arc(ox, oy, rArc, Math.PI / 2, Math.PI / 2 - theta2, true); ctx.stroke();
+        ctx.fillStyle = '#3498db';
+        ctx.textAlign = 'left';
+        ctx.fillText('r=' + rDeg + '°', ox + rArc * Math.sin(theta2 / 2) + 14, oy + rArc * Math.cos(theta2 / 2) + 18);
+      }
+    } else {
+      // 可逆模式：光从下方射向上方
+      // 入射光线端在左下方，方向 = 90°+θ1
+      // 入射角弧线：法线(90°) → 入射方向(90°+θ1)，顺时针
+      ctx.strokeStyle = 'rgba(231,76,60,0.75)';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(ox, oy, rArc, Math.PI / 2, Math.PI / 2 + theta1, false); ctx.stroke();
+      ctx.fillStyle = '#e74c3c';
+      ctx.textAlign = 'right';
+      ctx.fillText('i=' + aDeg + '°', ox - rArc * Math.sin(theta1 / 2) - 14, oy + rArc * Math.cos(theta1 / 2) + 16);
+
+      // 反射角弧线：法线(90°) → 反射方向(90°-θ1)，逆时针
+      ctx.strokeStyle = 'rgba(46,204,113,0.75)';
+      ctx.beginPath(); ctx.arc(ox, oy, rArc, Math.PI / 2, Math.PI / 2 - theta1, true); ctx.stroke();
+      ctx.fillStyle = '#2ecc71';
+      ctx.textAlign = 'left';
+      ctx.fillText("i'=" + aDeg + '°', ox + rArc * Math.sin(theta1 / 2) + 14, oy + rArc * Math.cos(theta1 / 2) + 16);
+
+      // 折射角弧线：法线(-90°) → 折射方向(-90°-θ2)，逆时针
+      if (!tir) {
+        ctx.strokeStyle = 'rgba(52,152,219,0.75)';
+        ctx.beginPath(); ctx.arc(ox, oy, rArc, -Math.PI / 2, -Math.PI / 2 - theta2, true); ctx.stroke();
+        ctx.fillStyle = '#3498db';
+        ctx.textAlign = 'right';
+        ctx.fillText('r=' + rDeg + '°', ox - rArc * Math.sin(theta2 / 2) - 14, oy - rArc * Math.cos(theta2 / 2) + 4);
+      }
+    }
+  }
+
+  // 可逆模式顶部说明
+  if (reverseMode) {
+    ctx.fillStyle = '#1565c0';
+    ctx.font = 'bold 15px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('光路可逆：逆着折射光射入 → 沿原入射方向射出', ox, 30);
+  }
+
+  // 数值显示
+  angleDisplay.textContent = (theta1 * 180 / Math.PI).toFixed(1) + '°';
+  refractDisplay.textContent = tir ? '—' : (theta2 * 180 / Math.PI).toFixed(1) + '°';
+  reflectDisplay.textContent = (theta1 * 180 / Math.PI).toFixed(1) + '°';
+
+  // 状态栏
+  if (reverseMode) {
+    statusBanner.className = 'status-banner status-rev';
+    statusBanner.textContent = '光路可逆：入射光沿原折射光线方向射入，折射光沿原入射光线方向射出';
+  } else if (tir) {
+    statusBanner.className = 'status-banner status-tir';
+    statusBanner.textContent = '全反射：入射角超过临界角，无折射光线';
+  } else if (n1 < n2) {
+    statusBanner.className = 'status-banner status-normal';
+    statusBanner.textContent = `光从${getMediumName(medium1Sel)}射入${getMediumName(medium2Sel)}，折射角小于入射角`;
+  } else if (n1 > n2) {
+    statusBanner.className = 'status-banner status-normal';
+    statusBanner.textContent = `光从${getMediumName(medium1Sel)}射入${getMediumName(medium2Sel)}，折射角大于入射角`;
+  } else {
+    statusBanner.className = 'status-banner status-normal';
+    statusBanner.textContent = '两介质相同，光沿直线传播';
+  }
+}
+
+// 事件绑定
+slider.addEventListener('input', (e) => { angleDeg = parseFloat(e.target.value); draw(); });
+medium1Sel.addEventListener('change', draw);
+medium2Sel.addEventListener('change', draw);
+[showIncident, showRefract, showReflect, showNormal, showAngles].forEach(el =>
+  el.addEventListener('change', draw)
+);
+
+canvas.addEventListener('click', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const x = (e.clientX - rect.left) * scaleX;
+  const y = (e.clientY - rect.top) * scaleY;
+  const cxx = canvas.width / 2, cyy = canvas.height / 2;
+  const dx = x - cxx, dy = y - cyy;
+  let ang = Math.atan2(Math.abs(dx), Math.abs(dy)) * 180 / Math.PI;
+  ang = Math.min(89, Math.max(0, ang));
+  angleDeg = ang;
+  slider.value = ang;
+  draw();
+});
+
+// 光路可逆
+btnReverse.addEventListener('click', () => {
+  reverseMode = !reverseMode;
+  btnReverse.classList.toggle('active', reverseMode);
+  draw();
+});
+
+// 自动演示
+btnAuto.addEventListener('click', () => {
+  autoMode = !autoMode;
+  btnAuto.classList.toggle('active', autoMode);
+  if (autoMode) {
+    if (animId) cancelAnimationFrame(animId);
+    let last = performance.now();
+    const step = (now) => {
+      const dt = (now - last) / 1000;
+      last = now;
+      angleDeg += autoDir * 25 * dt;
+      if (angleDeg >= 89) { angleDeg = 89; autoDir = -1; }
+      if (angleDeg <= 5) { angleDeg = 5; autoDir = 1; }
+      slider.value = angleDeg;
+      draw();
+      if (autoMode) animId = requestAnimationFrame(step);
+    };
+    animId = requestAnimationFrame(step);
+  } else {
+    if (animId) cancelAnimationFrame(animId);
+    animId = null;
+  }
+});
+
+draw();
+</script>
+</body>
+</html>
